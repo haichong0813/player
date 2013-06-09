@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8" />
+	<link type="image/x-icon" rel="shortcut icon" href="images/play.ico">
+	<title>music player</title>
+	<style type="text/css">
+		/* reset */
+		body{background:#525666;color: #B4753D;font: 16px Microsoft yahei, Arial;}
+		body,p{margin: 0;padding: 0;}
+		p{line-height: 24px}
+		.clearfix:after{clear:both; content:"."; display:block; height:0; line-height:0; font-size:0;  visibility:hidden; }
+		.clearfix{zoom:1;}
+		
+		/* music player */
+		.player{width: 380px;position: absolute;left: 50%;top: 50%;margin-top: -260px;margin-left: -190px}
+		.player .cover{position: relative;width: 100%;height: 220px;background: #FFF;background: url(images/cover.jpg) no-repeat;border-radius: 5px 5px 0 0;}
+		.player .control{width: 100%;height: 50px;}
+		.player .control .play-btn{float: left;width: 13.2%;height: 100%;background: #202226;position: relative;line-height: 0;}
+		.player .control .play-btn .play-b{width:0; height:0; border:7px solid; border-color:#202226 #202226 #202226 #FFF;position: absolute;top: 50%;left: 55%;margin-left: -7px;margin-top: -7px;cursor: pointer;}
+		.player .control .play-btn .pause-b{display: none;cursor: pointer;position: absolute;left: 50%;top: 50%;margin-top: -7px;margin-left: -7px;}
+		.player .control .play-btn .pause-l{color: #FFF;border-width: 7px 2px 7px 2px;margin-right: 3px;border-style: solid;}
+		.player .control .play-btn .bs{display: inline-block;width: 0;height: 0;}
+		.player .control .play-pro{float: left;width: 73.6%;height: 100%;background: #393c4b;position: relative;}
+		.player .control .play-pro .pro-b{background: #54596c;height: 6px;width: 90%;display: inline-block;position: absolute;top: 50%;left: 50%;margin-top: -3px;margin-left: -45%;border-radius: 5px;cursor: pointer;}
+		.player .control .play-pro .pro-w{background: #FFF;height: 6px;width: 0;display: inline-block;position: absolute;top: 50%;left: 50%;margin-top: -3px;margin-left: -45%;border-radius: 5px;}
+		.player .control .play-pro .pro-h{height: 6px;width: 90%;display: inline-block;position: absolute;top: 50%;left: 50%;margin-top: -3px;margin-left: -45%;border-radius: 5px;cursor: pointer;}
+		.player .control .play-vol{float: left;width: 13.2%;height: 100%;background: #393c4b;position: relative;}
+		.player .control .play-vol .vol-b{position: absolute;top: 50%;left: 50%;margin-left: -9px;margin-top: -9px;z-index: 1;cursor: pointer;}
+		.player .control .play-vol .vol-p{display: none;background: #000;width: 30px;height: 100px;top: -60px;left: 10px;z-index: 0;border-radius: 20px;opacity: 0.7;text-align: center;position: absolute;}
+		.player .control .play-vol .vol-c{width: 2px;height: 60%;display: inline-block;}
+		.player .control .play-vol .vol-g{width: 100%;height: 100%;background: #666;display: inline-block;margin-top: 10px;border-radius: 5px;overflow: hidden;position: relative;}
+		.player .control .play-vol .vol-w{width: 100%;height: 100%;display: inline-block;background: #FFF;border-radius: 5px;top: 50%;position: absolute;}
+		.player .control .play-vol .vol-d{width: 9px;height: 9px;display: inline-block;background: #FFF;border-radius: 9px;position: absolute;top: 32px;left: 11px;}
+		.player .lrc{padding: 20px;width: 340px;background: #FFF;border-radius: 0 0 5px 5px;color: #8d94a6;font-size: 14px;text-align: center;}
+		.player .lrc .title{color: #30b192;font-size: 18px;margin-bottom: 16px;}
+		.player .lrc .wrap{height: 170px;overflow: hidden;position: relative;}
+		.player .lrc .content{padding-top: 72px;position: absolute;width: 100%;left: 0}
+		.player .lrc .high{color: #393c4b}
+	</style>
+</head>
+<body>
+
+	<!-- 播放器 -->
+	<div id="player" class="player">
+		<div class="cover"></div>
+		<div class="control clearfix">
+
+			<!-- 播放按钮 -->
+			<div class="play-btn">
+				<span id="playBtn" class="play-b bs"></span>
+				<span id="pauseBtn" class="pause-b">
+					<i class="pause-l bs"></i><i class="pause-l bs"></i>
+				</span>
+			</div>
+
+			<!-- 进度条 -->
+			<div class="play-pro">
+				<span id="songProgressBar" class="pro-b"></span>
+				<span id="songProgressCurrent" class="pro-w"></span>
+				<span id="songProgressHideBar" class="pro-h"></span>
+			</div>
+
+			<!-- 音量控制 -->
+			<div class="play-vol">
+				<img id="volumeBtn" class="vol-b" src="images/vol.png" width="18px" height="18px"/>
+				<span id="volumePanel" class="vol-p">
+					<span id="volumeProgressBar" class="vol-c">
+						<span class="vol-g">
+							<i id="volumeProgressCurrent" class="vol-w"></i>
+						</span>
+						<span id="volumeCurrentBtn" class="vol-d"></span>
+					</span>
+				</span>
+			</div>
+
+		</div>
+
+		<!-- 歌词 -->
+		<div class="lrc">
+			<div class="title">小宇 - 张震岳</div>
+			<div class="wrap">
+				<div class="content" id="lrc">
+					<img src="images/loading.gif" width="16px" height="11px"/>
+				</div>
+			</div>
+		</div>
+
+	</div>
+	
+	<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+	<script type="text/javascript" src="js/soundmanager2-jsmin.js"></script>
+	<script type="text/javascript" src="js/index.min.js"></script>
+</body>
+</html>
