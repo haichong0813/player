@@ -1,49 +1,78 @@
-;(function($){
-	var $songProgressBar = $('#songProgressBar'),//歌曲进度条面板
-	$songProgressCurrent = $('#songProgressCurrent'),//当前歌曲进度条位置
-	$songProgressHideBar = $('#songProgressHideBar'),//歌曲进度条占位面板
-	$volumeProgressCurrent = $('#volumeProgressCurrent'),//当前音量进度条位置
-	$volumeCurrentBtn = $('#volumeCurrentBtn'),//当前音量按钮位置
-	$volumeProgressBar = $('#volumeProgressBar'),//音量进度条面板
-	$volumePanel = $('#volumePanel'),//音量面板
-	$volumeBtn = $('#volumeBtn'),//音量按钮
-	$playBtn = $('#playBtn'),//播放按钮
-	$pauseBtn = $('#pauseBtn'),//暂停按钮
-	$lrc = $('#lrc'),//歌词元素
-	host = 'http://xiaoqian.b0.upaiyun.com/',//歌曲文件路径
-	fileName = 's1',//歌曲歌词文件名
-	soundId = 'mySound',//音频ID
-	songTime = 0,//歌曲时间
-	player = {};
+;(function($, window){
+	var $songProgressBar = $('#songProgressBar'), //歌曲进度条面板
+	$songProgressLoad = $('#songProgressLoad'),
+	$songProgressCurrent = $('#songProgressCurrent'), //当前歌曲进度条位置
+	$songProgressHideBar = $('#songProgressHideBar'), //歌曲进度条占位面板
+	$volumeProgressCurrent = $('#volumeProgressCurrent'), //当前音量进度条位置
+	$volumeCurrentBtn = $('#volumeCurrentBtn'), //音量游标按钮
+	$volumeProgressBar = $('#volumeProgressBar'), //音量进度条面板
+	$volumePanel = $('#volumePanel'), //音量面板
+	$volumeBtn = $('#volumeBtn'), //音量按钮
+	$playBtn = $('#playBtn'), //播放按钮
+	$pauseBtn = $('#pauseBtn'), //暂停按钮
+	$title = $('#title'), //歌曲名和歌手名
+	$coverImage = $('#coverImage'), //封面图片
+	$lrc = $('#lrc'), //歌词元素
+	$lrcPanel = $('#lrcPanel'), //歌词面板
+	$playList = $('#playList'), //播放列表
+	$playListBtn = $('#playListBtn'), //显示播放列表按钮
+	lrcSuffix = '.lrc', //歌词文件后缀
+	soundId = 'mySound', //音频ID
+	songTime = 0, //歌曲时间
+	progressWidth = 90, //进度条宽度
+	playlistId = 0, //播放列表ID
+	player = player || {};
+	
+	//soundManager配置
+	soundManager.url = 'swf/';
+	soundManager.debugMode = false;
 
 	player.init = function(){
-		this.create();
-		this.bind();
+		this.fn.create();
+		this.fn.createPlayListUI();
+		this.fn.fillData();
+		this.fn.bind();
 	};
 
-	player.create = function(){
-		//初始化音频对象
-		soundManager.setup({
-		  	url: 'swf/',//flash文件
-		  	debugMode: false,//调试模式
-		  	onready: function() {
-			    soundManager.createSound({
+	player.fn = {
+		create: function(callback){
+			playlistId = playlistId ? playlistId : 0;
+			
+			if(player.sound){
+				player.sound.destruct(); //销毁音频对象
+				if(playlistId == playlist.length){ //播放列表循环播放
+		            playlistId = 0;
+		        }
+			}
+
+			//初始化音频对象
+		  	soundManager.onready(function(){
+		  		player.sound = soundManager.createSound({
 			        id: soundId,//音频ID
-			        url: host + fileName + '.mp3',//播放地址
+			        url: playlist[playlistId].fileName,//播放地址
 			        volume: 50,//音量大小
 			        autoLoad: true,//自动加载
+			        // autoPlay: true,
 			        onload:function(){
 			      		songTime = Math.floor((this.bytesTotal/this.bytesLoaded)*this.duration);//记录歌曲时间
+			      		callback && callback();
+			      	},
+			      	whileloading: function(){
+			      		var songProgressLoad = (this.bytesLoaded / this.bytesTotal) * progressWidth;
+			      		//判断当前进度是否越界
+					    if(songProgressLoad <= progressWidth){
+					    	$songProgressLoad.css('width', songProgressLoad + '%');//设置进度条
+					    }
 			      	},
 			      	whileplaying: function() {
-					    var currentProgressPos = (this.position / this.duration) * 90,//当前播放进度
+					    var songProgressCurrent = (this.position / this.duration) * progressWidth,//当前播放进度
 					    pos = (this.position / 1000).toFixed();//当前播放时间
 
 					    //判断当前进度是否越界
-					    if(currentProgressPos >= 90){
+					    if(songProgressCurrent >= progressWidth){
 					    	return;
 					    }
-					    $songProgressCurrent.css('width', currentProgressPos + '%');//设置进度条
+					    $songProgressCurrent.css('width', songProgressCurrent + '%');//设置进度条
 
 				    	//判断当前播放时间是否匹配到歌词对象
 						if(player.lrc.options.data[pos]){
@@ -56,71 +85,112 @@
 						}
 				  	},
 				    onfinish: function() {
-					    showBtn($pauseBtn,$playBtn);
 					    $songProgressCurrent.animate({'width':0},'slow');//重置进度条
 					    $lrc.animate({'top':0},'slow');//重置歌词位置
-					    soundManager.setPosition(soundId,0);//重置播放位置
+						
+						++playlistId;
+					    player.fn.create(function(){
+					    	player.sound.play();
+					    });
+					    player.fn.fillData();
 					}
 			    });
-				player.lrc.getData();
-		  	}
-		});
-	};
-
-	player.bind = function(){
-		//播放歌曲
-		$playBtn.click(function(){
-			showBtn($(this),$pauseBtn);
-			soundManager.play(soundId);
-		});
-
-		//暂停播放
-		$pauseBtn.click(function(){
-			showBtn($(this),$playBtn);
-			soundManager.pause(soundId);
-		});
-
-		//打开音量面板
-		$volumeBtn.click(function(){
-			($volumePanel.is(':hidden')) ? $volumePanel.show() : $volumePanel.hide();
-		});
-
-		//指定进度条位置开始播放
-		$songProgressHideBar.click(function(event){
-			soundManager.pause(soundId);//暂停播放
-			showBtn($playBtn,$pauseBtn);
-
-			var pos = player.volume.getAbsPos(this),//获取进度条容器位置
-			page = player.volume.getPageXY(event),//获取鼠标位置
-			currentProgressPos = ((page.x - pos.x) / $(this).width()) * 90,//当前进度条位置百分比
-			secondWidth = songTime / $(this).width(),//歌曲每秒所占宽度
-			currentPlayTime = (page.x - pos.x) * secondWidth;//当前播放时间
-
-			//设置进度条位置
-			$songProgressCurrent.animate({'width': currentProgressPos + '%'},'slow',function(){
-				soundManager.setPosition(soundId,currentPlayTime);//指定时间播放歌曲
-				soundManager.resume(soundId);//恢复歌曲
-				soundManager.play(soundId);//播放歌曲
+		  	});
+		},
+		fillData: function(){
+			$coverImage[0].src = playlist[playlistId].coverImage; //填充封面图片
+			$title.text(playlist[playlistId].songName +' - '+ playlist[playlistId].singerName); //填充歌曲信息
+			player.lrc.getData(getCommonFileName(playlist[playlistId].fileName) + lrcSuffix); //填充歌词
+			player.fn.highCurrentPlayUI(); //高亮当前
+		},
+		createPlayListUI: function(){
+			var html = [];
+			for(var i = 0, len = playlist.length; i < len; i++){
+				html[i] = '<li><span>'+ (i + 1) +'.</span>'+ playlist[i].songName +' - '+ playlist[i].singerName +'</li>';
+			}
+			$playList.html('<ul>' +html.join(' ')+ '</ul>');
+		},
+		highCurrentPlayUI:function(){
+			$playList.find('li').eq(playlistId).addClass('current-play').siblings().removeClass('current-play');//高亮当前
+		},
+		bind: function(){
+			//播放歌曲
+			$playBtn.click(function(){
+				player.sound.play();
+				showBtn($(this),$pauseBtn);
 			});
-			player.lrc.scroll(currentPlayTime);//滚动歌词
-		});
 
-		//按下音量游标
-		$volumeCurrentBtn.mousedown(player.volume.down);
+			//暂停播放
+			$pauseBtn.click(function(){
+				player.sound.pause();
+				showBtn($(this),$playBtn);
+			});
 
-		//移动音量游标
-		$(document).mousemove(player.volume.move);
+			//打开音量面板
+			$volumeBtn.click(function(){
+				($volumePanel.is(':hidden')) ? $volumePanel.show() : $volumePanel.hide();
+			});
 
-		//放下音量游标
-		$(document).mouseup(player.volume.up);
+			//播放列表
+			$playList.on('click', 'li', function(){
+				playlistId = $(this).index();
+
+				//播放歌曲
+				player.fn.create(function(){
+					player.sound.play();
+				});
+				player.fn.fillData();
+				
+				//重置元素
+				$songProgressCurrent.animate({'width':0},'slow'); //重置进度条
+				$lrc.animate({'top':0},'slow'); //重置歌词位置
+				showBtn($playBtn,$pauseBtn);
+			});
+
+			//显示播放列表
+			$playListBtn.click(function(){
+				$(this).toggleClass('bd');
+				$lrcPanel.toggleClass('vs');
+				$playList.toggleClass('vs');
+			});
+
+			//指定进度条位置开始播放
+			$songProgressHideBar.click(function(event){
+				player.sound.pause();//暂停播放
+				showBtn($playBtn,$pauseBtn);//显示按钮
+
+				var pos = player.volume.getAbsPos(this),//获取进度条容器位置
+				page = player.volume.getPageXY(event),//获取鼠标位置
+				songProgressCurrent = ((page.x - pos.x) / $(this).width()) * progressWidth,//当前进度条位置百分比
+				secondWidth = songTime / $(this).width(),//歌曲每秒所占宽度
+				currentPlayTime = (page.x - pos.x) * secondWidth;//当前播放时间
+
+				//设置进度条位置
+				$songProgressCurrent.animate({'width': songProgressCurrent + '%'},'slow',function(){
+					player.sound.setPosition(currentPlayTime);//指定时间播放歌曲
+					player.sound.resume();//恢复歌曲
+					player.sound.play();//播放歌曲
+				});
+
+				player.lrc.scroll(currentPlayTime);//滚动歌词
+			});
+
+			//按下音量游标
+			$volumeCurrentBtn.mousedown(player.volume.down);
+
+			//移动音量游标
+			$(document).mousemove(player.volume.move);
+
+			//放下音量游标
+			$(document).mouseup(player.volume.up);
+		}
 	};
-	
+
 	//歌词
 	player.lrc = {
 		options:{
-			index: -1,//记录歌词下标
-			data: {},//歌词数据
-			html: []//歌词结构
+			index: -1, //记录歌词下标
+			data: {} //歌词数据
 		},
 		//根据歌曲播放进度滚动歌词
 		scroll:function(time){
@@ -144,11 +214,12 @@
 			}
 		},
 		//读取歌词文件
-		getData:function(){
-	        $.get(fileName + '.lrc',function(data){
-	        	 var arr = data.split("\n");//分割每行歌词
-	        	 //遍历歌词
-	        	 for(var i = 0, len = arr.length; i < len; i++){
+		getData:function(url){
+			player.lrc.options.data = {};//清空歌词对象
+	        $.get(url, function(data){
+	        	var arr = data.split("\n");//分割每行歌词
+	        	//遍历歌词
+	        	for(var i = 0, len = arr.length; i < len; i++){
 	        	 	var text = arr[i].replace(/\[\d*:\d*((\.|\:)\d*)*\]/g,''),//获取歌词
 	        	 	timeArr = arr[i].match(/\[\d*:\d*((\.|\:)\d*)*\]/g);//获取时间帧
 	        	 	if(timeArr){
@@ -160,18 +231,18 @@
 	        	 			player.lrc.options.data[time] = $.trim(text);//歌词对象
 	        	 		}
 	        	 	}
-	        	 }
-	        	 player.lrc.createUI(player.lrc.options.data);//创建歌词结构
+	        	}
+	        	player.lrc.createUI(player.lrc.options.data);//创建歌词结构
 	        });
 		},
 		//创建歌词结构
 		createUI:function(data){
-			var i = 0;
+			var i = 0, html = [];
         	for(var item in data){
-        		player.lrc.options.html[i]= '<p time='+ item +'>' + data[item] + '</p>';
+        		html[i]= '<p time='+ item +'>' + data[item] + '</p>';
         		i++;
         	}
-        	$lrc.html(player.lrc.options.html.join(' '));
+        	$lrc.html(html.join(' '));
 		}
 	};
 
@@ -274,5 +345,10 @@
 		b.show();
 	}
 
+	//提取mp3文件名，歌词文件名共用
+	function getCommonFileName(fileName){
+		return fileName.substring(0, fileName.lastIndexOf('.'));
+	}
+
 	player.init();
-})(jQuery);
+})(jQuery,window);
