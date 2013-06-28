@@ -1,6 +1,6 @@
 ;(function($, window){
 	var $songProgressBar = $('#songProgressBar'), //歌曲进度条面板
-	$songProgressLoad = $('#songProgressLoad'),
+	$songProgressLoad = $('#songProgressLoad'), //歌曲加载进度面板
 	$songProgressCurrent = $('#songProgressCurrent'), //当前歌曲进度条位置
 	$songProgressHideBar = $('#songProgressHideBar'), //歌曲进度条占位面板
 	$volumeProgressCurrent = $('#volumeProgressCurrent'), //当前音量进度条位置
@@ -16,7 +16,6 @@
 	$lrcPanel = $('#lrcPanel'), //歌词面板
 	$playList = $('#playList'), //播放列表
 	$playListBtn = $('#playListBtn'), //显示播放列表按钮
-	lrcSuffix = '.lrc', //歌词文件后缀
 	soundId = 'mySound', //音频ID
 	songTime = 0, //歌曲时间
 	progressWidth = 90, //进度条宽度
@@ -49,7 +48,7 @@
 		  	soundManager.onready(function(){
 		  		player.sound = soundManager.createSound({
 			        id: soundId,//音频ID
-			        url: playlist[playlistId].fileName,//播放地址
+			        url: playlist[playlistId].mp3,//播放地址
 			        volume: 50,//音量大小
 			        autoLoad: true,//自动加载
 			        // autoPlay: true,
@@ -100,7 +99,7 @@
 		fillData: function(){
 			$coverImage[0].src = playlist[playlistId].coverImage; //填充封面图片
 			$title.text(playlist[playlistId].songName +' - '+ playlist[playlistId].singerName); //填充歌曲信息
-			player.lrc.getData(getCommonFileName(playlist[playlistId].fileName) + lrcSuffix); //填充歌词
+			player.lrc.getData(playlist[playlistId].lrc); //填充歌词
 			player.fn.highCurrentPlayUI(); //高亮当前
 		},
 		createPlayListUI: function(){
@@ -343,11 +342,6 @@
 	function showBtn(a,b){
 		a.hide();
 		b.show();
-	}
-
-	//提取mp3文件名，歌词文件名共用
-	function getCommonFileName(fileName){
-		return fileName.substring(0, fileName.lastIndexOf('.'));
 	}
 
 	player.init();
