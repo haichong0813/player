@@ -1,4 +1,4 @@
-;(function($, window){
+;(function($, win){
 	var $songProgressBar = $('#songProgressBar'), //歌曲进度条面板
 	$songProgressLoad = $('#songProgressLoad'), //歌曲加载进度面板
 	$songProgressCurrent = $('#songProgressCurrent'), //当前歌曲进度条位置
@@ -8,6 +8,7 @@
 	$volumeProgressBar = $('#volumeProgressBar'), //音量进度条面板
 	$volumePanel = $('#volumePanel'), //音量面板
 	$volumeBtn = $('#volumeBtn'), //音量按钮
+	$playControl = $('#playControl'), //播放控制
 	$playBtn = $('#playBtn'), //播放按钮
 	$pauseBtn = $('#pauseBtn'), //暂停按钮
 	$title = $('#title'), //歌曲名和歌手名
@@ -25,6 +26,13 @@
 	//soundManager配置
 	soundManager.url = 'swf/';
 	soundManager.debugMode = false;
+
+	player.css = {
+		vs: 'vs', //显隐 visibility: hidden;
+		bd: 'bd', //边框颜色 border-color: #BBB
+		hg: 'hg', //高亮歌词 color: #393c4b
+		cr: 'cr' //高亮播放列表 background-color: #30B192;color: #FFF
+	};
 
 	player.init = function(){
 		this.fn.create();
@@ -53,8 +61,18 @@
 			        autoLoad: true,//自动加载
 			        // autoPlay: true,
 			        onload:function(){
-			      		songTime = Math.floor((this.bytesTotal/this.bytesLoaded)*this.duration);//记录歌曲时间
-			      		callback && callback();
+			        	if(this.readyState == 3){
+			        		songTime = Math.floor((this.bytesTotal/this.bytesLoaded)*this.duration);//记录歌曲时间
+			      			callback && callback();
+			        	}else if(this.readyState == 2){
+			        		alert(this.url + ' 音频加载失败');
+			        	}else if(this.readyState == 1){
+			        		alert('正在加载中');
+			        	}else if(this.readyState == 0){
+			        		alert('未初始化');
+			        	}else{
+			        		alert('情况好乱');
+			        	}
 			      	},
 			      	whileloading: function(){
 			      		var songProgressLoad = (this.bytesLoaded / this.bytesTotal) * progressWidth;
@@ -78,8 +96,8 @@
 							//判断时间帧，防止多次执行
 							if(pos != player.lrc.options.index){
 								player.lrc.options.index = pos;//记录歌词下标
-								$lrc.animate({'top': '-=24px'},'slow').find('p').removeClass('high')
-								.end().find('p[time='+ pos +']').addClass('high');//滚动歌词，并高亮当前行歌词
+								$lrc.animate({'top': '-=24px'},'slow').find('p').removeClass(player.css.hg)
+								.end().find('p[time='+ pos +']').addClass(player.css.hg);//滚动歌词，并高亮当前行歌词
 							}
 						}
 				  	},
@@ -100,7 +118,7 @@
 			$coverImage[0].src = playlist[playlistId].coverImage; //填充封面图片
 			$title.text(playlist[playlistId].songName +' - '+ playlist[playlistId].singerName); //填充歌曲信息
 			player.lrc.getData(playlist[playlistId].lrc); //填充歌词
-			player.fn.highCurrentPlayUI(); //高亮当前
+			player.fn.highCurrentLyrics(); //高亮当前
 		},
 		createPlayListUI: function(){
 			var html = [];
@@ -109,20 +127,14 @@
 			}
 			$playList.html('<ul>' +html.join(' ')+ '</ul>');
 		},
-		highCurrentPlayUI:function(){
-			$playList.find('li').eq(playlistId).addClass('current-play').siblings().removeClass('current-play');//高亮当前
+		highCurrentLyrics:function(){
+			$playList.find('li').eq(playlistId).addClass(player.css.cr).siblings().removeClass(player.css.cr);//高亮当前
 		},
 		bind: function(){
-			//播放歌曲
-			$playBtn.click(function(){
-				player.sound.play();
-				showBtn($(this),$pauseBtn);
-			});
 
-			//暂停播放
-			$pauseBtn.click(function(){
-				player.sound.pause();
-				showBtn($(this),$playBtn);
+			//播放控制
+			$playControl.click(function(){
+				togglePlay();
 			});
 
 			//打开音量面板
@@ -143,20 +155,20 @@
 				//重置元素
 				$songProgressCurrent.animate({'width':0},'slow'); //重置进度条
 				$lrc.animate({'top':0},'slow'); //重置歌词位置
-				showBtn($playBtn,$pauseBtn);
+				togglePlay(true);
 			});
 
 			//显示播放列表
 			$playListBtn.click(function(){
-				$(this).toggleClass('bd');
-				$lrcPanel.toggleClass('vs');
-				$playList.toggleClass('vs');
+				$(this).toggleClass(player.css.bd);
+				$lrcPanel.toggleClass(player.css.vs);
+				$playList.toggleClass(player.css.vs);
 			});
 
 			//指定进度条位置开始播放
 			$songProgressHideBar.click(function(event){
 				player.sound.pause();//暂停播放
-				showBtn($playBtn,$pauseBtn);//显示按钮
+				togglePlay(true);//显示按钮
 
 				var pos = player.volume.getAbsPos(this),//获取进度条容器位置
 				page = player.volume.getPageXY(event),//获取鼠标位置
@@ -205,10 +217,10 @@
 			if(jumpTime){
 				var $jump = $lrc.find('p[time='+ jumpTime +']'),
 				currentTop = $jump.offset().top - $lrc.offset().top - parseInt($lrc.css('padding-top'));//计算滚动位置
-				$jump.addClass('high').siblings().removeClass('high');//高亮当前歌词
+				$jump.addClass(player.css.hg).siblings().removeClass(player.css.hg);//高亮当前歌词
 				$lrc.animate({'top': -currentTop},'slow');//滚动歌词到指定位置
 			}else{
-				$lrc.find('p').removeClass('high');//重置相关元素
+				$lrc.find('p').removeClass(player.css.hg);//重置相关元素
 				$lrc.animate({'top': 0},'slow');//滚动歌词到原位
 			}
 		},
@@ -282,7 +294,7 @@
 		},
 		up:function(){
 			if(player.volume.options.$dragging != null){
-				// $dragging = diffXY = dragXY = pageXY = offsetXY = scrollXY = containerXY = null;
+				$volumePanel.fadeOut();
 				player.volume.options.$dragging = null;
 
 				//注销事件，释放内存
@@ -338,10 +350,22 @@
 		}
     };
 
-	//显示隐藏播放暂停按钮
-	function showBtn(a,b){
-		a.hide();
-		b.show();
+	//播放暂停显隐
+	function togglePlay(flag){
+		//如果正在播放，则返回
+		if(!$pauseBtn.hasClass(player.css.vs) && flag){
+			return;
+		}
+
+		if(!$playBtn.hasClass(player.css.vs)){
+			$playBtn.toggleClass(player.css.vs);
+			$pauseBtn.toggleClass(player.css.vs);
+			player.sound.play();
+		}else{
+			$playBtn.toggleClass(player.css.vs);
+			$pauseBtn.toggleClass(player.css.vs);
+			player.sound.pause();
+		}
 	}
 
 	player.init();
